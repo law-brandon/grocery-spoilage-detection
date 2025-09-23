@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "src"
+version = "0.1.0"
+description = ""
+authors = ["Brandon <law.brandon03@gmail.com>"]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "~3.11"
+transformers = "^4.50.2"
+torch = { version = "^2.6.0", source = "pytorch" }
+fastapi-cache2 = {extras = ["redis"], version = "^0.1.9"}
+fastapi = {extras = ["standard"], version = "^0.115.12"}
+pillow = "^11.3.0"
+python-multipart = "^0.0.20"
+
+[[tool.poetry.source]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cpu"
+priority = "explicit"
+
+[tool.poetry.group.dev.dependencies]
+datasets = "^3.5"
+scikit-learn = "^1.6.1"
+pytest = "^8.3"
+ruff = "^0.11"
+pre-commit = "^4.2"
+evaluate = "^0.4"
+accelerate = "^1.5.2"
+python-dotenv = "^1.1.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
