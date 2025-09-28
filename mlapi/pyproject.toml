@@ -13,6 +13,10 @@ fastapi-cache2 = {extras = ["redis"], version = "^0.1.9"}
 fastapi = {extras = ["standard"], version = "^0.115.12"}
 pillow = "^11.3.0"
 python-multipart = "^0.0.20"
+ultralytics = "^8.3.203"
+numpy = "^2.3.3"
+huggingface-hub = "^0.35.1"
+yolov5 = { git = "https://github.com/ultralytics/yolov5.git" }
 
 [[tool.poetry.source]]
 name = "pytorch"
