@@ -7,4 +7,4 @@ from .banana_predict import subapi
 app = FastAPI()
 
 # Mount the sub-application
-app.mount("/lab", subapi)
+app.mount("/freshvision", subapi)
