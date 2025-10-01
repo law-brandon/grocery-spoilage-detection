@@ -16,7 +16,7 @@ python-multipart = "^0.0.20"
 ultralytics = "^8.3.203"
 numpy = "^2.3.3"
 huggingface-hub = "^0.35.1"
-yolov5 = { git = "https://github.com/ultralytics/yolov5.git" }
+joblib = "^1.5.2"
 
 [[tool.poetry.source]]
 name = "pytorch"

@@ -1,14 +1,11 @@
 import json
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 from datetime import datetime, timezone
 from pydantic import BaseModel, field_validator, ConfigDict
 from fastapi.responses import JSONResponse, StreamingResponse
 import numpy as np
 import joblib
 from ultralytics import YOLO
-
-from fastapi import UploadFile, File
-from fastapi.responses import JSONResponse
 from PIL import Image
 import io
 import os
@@ -56,7 +53,6 @@ async def check(file: UploadFile = File(...)):
         pil_img = Image.open(io.BytesIO(contents)).convert("RGB")
         processed_img = resize_with_padding(pil_img, 640)
 
-        # Save to in-memory buffer
         buf = io.BytesIO()
         processed_img.save(buf, format="JPEG")
         buf.seek(0)
@@ -73,46 +69,12 @@ async def check(file: UploadFile = File(...)):
             content={"error": f"Invalid image file: {str(e)}"}
         )
     
-# @subapi.post("/predict-banana")
-# async def predict_banana(file: UploadFile = File(...)):
-#     try:
-#         contents = await file.read()
-#         pil_img = Image.open(io.BytesIO(contents)).convert("RGB")
-#         processed_img = resize_with_padding(pil_img, 640)
-#         img_np = np.array(processed_img)
-
-#         # Use the correct YOLO model variable
-#         results = yolo_model.predict(img_np, imgsz=640, verbose=False)
-
-#         predictions = []
-#         for r in results:
-#             for box, cls, conf in zip(r.boxes.xyxy, r.boxes.cls, r.boxes.conf):
-#                 predictions.append({
-#                     "bbox": [float(x) for x in box.tolist()],
-#                     "class": int(cls),
-#                     "confidence": float(conf)
-#                 })
-
-#         all_predictions_dict = json.loads(results.tojson())
-
-#         return {
-#             "filename": file.filename,
-#             "num_detections": len(predictions),
-#             "predictions": predictions
-#         }
-
-#     except Exception as e:
-#         return JSONResponse(
-#             status_code=400,
-#             content={"error": f"Invalid image file or model error: {str(e)}"})
 
 @subapi.post("/predict-banana")
 async def predict_banana(file: UploadFile = File(...)):
     try:
         contents = await file.read()
         pil_img = Image.open(io.BytesIO(contents)).convert("RGB")
-        #processed_img = resize_with_padding(pil_img, 640)
-        #img_np = np.array(processed_img)
 
         results = yolo_model.predict(pil_img, imgsz=640, conf=0.25, iou=0.6, stream=False)
 
@@ -145,25 +107,21 @@ async def predict_banana(file: UploadFile = File(...)):
         )
 
 
-
-
-@subapi.post("/predict-banana-image")
+@subapi.post("/annotate-banana")
 async def predict_banana(file: UploadFile = File(...)):
     try:
         contents = await file.read()
-        pil_img = Image.open(io.BytesIO(contents)).convert("RGB")
-        processed_img = resize_with_padding(pil_img, 640)
-        img_np = np.array(processed_img)
+        pil_img = Image.open(io.BytesIO(contents))
 
     
-        results = yolo_model.predict(img_np, imgsz=640, verbose=False)
+        results = yolo_model.predict(pil_img, imgsz=640, verbose=False)
 
  
         r = results[0]
-        plotted = r.plot()  # returns NumPy array (BGR)
+        plotted = r.plot()
         
-        # Convert BGR -> RGB, then to PIL
-        plotted_pil = Image.fromarray(plotted)
+        plotted_rgb = plotted[..., ::-1]
+        plotted_pil = Image.fromarray(plotted_rgb)
 
         img_bytes = io.BytesIO()
         plotted_pil.save(img_bytes, format="JPEG")
