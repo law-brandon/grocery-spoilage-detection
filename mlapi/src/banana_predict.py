@@ -16,7 +16,7 @@ import os
 # Sub-application
 subapi = FastAPI()
 
-model_path = "./proactive-spoilage-model/best.pt"
+model_path = "./best.pt"
 yolo_model = YOLO(model_path)
 
 
@@ -111,10 +111,10 @@ async def predict_banana(file: UploadFile = File(...)):
     try:
         contents = await file.read()
         pil_img = Image.open(io.BytesIO(contents)).convert("RGB")
-        processed_img = resize_with_padding(pil_img, 640)
-        img_np = np.array(processed_img)
+        #processed_img = resize_with_padding(pil_img, 640)
+        #img_np = np.array(processed_img)
 
-        results = yolo_model.predict(img_np, imgsz=640, verbose=False, stream=False)
+        results = yolo_model.predict(pil_img, imgsz=640, conf=0.25, iou=0.6, stream=False)
 
         predictions = []
         all_predictions_dict = {} 
