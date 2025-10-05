@@ -1,11 +1,7 @@
 FROM python:3.11-slim-buster AS build
 
 RUN set -eux; \
-    apt-get update; \
-    apt-get install -y --no-install-recommends \
-    curl \
-    ; \
-    rm -rf /var/lib/apt/lists/*
+    pip install poetry 
 
 ENV POETRY_HOME "/opt/poetry"
 ENV POETRY_VERSION "2.0.1"
