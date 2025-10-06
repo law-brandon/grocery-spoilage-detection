@@ -2,20 +2,27 @@ import React, { useState } from "react";
 
 function DefaultApp() {
   const [selectedFile, setSelectedFile] = useState(null);
+  const [originalImageURL, setOriginalImageURL] = useState(null);
   const [processedImage, setProcessedImage] = useState(null);
   const [jsonResult, setJsonResult] = useState(null);
   const [selectedEndpoint, setSelectedEndpoint] = useState("check");
   const [loading, setLoading] = useState(false);
 
-  // Reset state when changing endpoints
+  // Reset only processed results when switching endpoints
   const handleEndpointChange = (event) => {
     setSelectedEndpoint(event.target.value);
-    setProcessedImage(null);  // clear the image
-    setJsonResult(null);      // clear the json/table
+    setProcessedImage(null);  // Clear processed image
+    setJsonResult(null);      // Clear JSON/table
   };
 
   const handleFileChange = (event) => {
-    setSelectedFile(event.target.files[0]);
+    const file = event.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+      setOriginalImageURL(URL.createObjectURL(file)); // Store preview
+      setProcessedImage(null);
+      setJsonResult(null);
+    }
   };
 
   const handleSubmit = async () => {
@@ -73,15 +80,8 @@ function DefaultApp() {
   };
 
   return (
-    <div style={{ maxWidth: 800, margin: "auto", padding: 20, fontFamily: "Arial", textAlign: "center" }}>
+    <div style={{ maxWidth: 900, margin: "auto", padding: 20, fontFamily: "Arial" }}>
       <h1>Grocery Freshness Test</h1>
-
-      {/* --- File Upload --- */}
-      <input 
-        type="file" 
-        accept="image/*" 
-        onChange={handleFileChange}
-        style={{ margin: "20px 0" }} />
 
       {/* --- Endpoint Selection --- */}
       <div style={{ marginBottom: 20 }}>
@@ -93,7 +93,7 @@ function DefaultApp() {
             checked={selectedEndpoint === "check"}
             onChange={handleEndpointChange}
           />
-          Check Image
+          Check Image (Resize Only)
         </label>
         <label style={{ marginLeft: 15 }}>
           <input
@@ -113,38 +113,59 @@ function DefaultApp() {
             checked={selectedEndpoint === "predict-banana"}
             onChange={handleEndpointChange}
           />
-          Predict Class and Confidence
+          Predict Classes
         </label>
       </div>
-      
-      <button onClick={handleSubmit} disabled={loading}>
-        {loading ? "Processing..." : "Submit"}
+
+      {/* --- File Upload --- */}
+      <input type="file" accept="image/*" onChange={handleFileChange} />
+      <button onClick={handleSubmit} disabled={loading} style={{ marginLeft: 10 }}>
+        {loading ? "Processing..." : "Run"}
       </button>
 
-      {/* --- Image Output --- */}
+      {/* --- Original Uploaded Image --- */}
+      {originalImageURL && (
+        <div style={{ marginTop: 30 }}>
+          <h3>Original Image:</h3>
+          <img
+            src={originalImageURL}
+            alt="Original upload"
+            style={{
+              maxWidth: "100%",
+              marginBottom: 20,
+            }}
+          />
+        </div>
+      )}
+
+      {/* --- Processed Image --- */}
       {processedImage && (
         <div style={{ marginTop: 30 }}>
           <h3>Processed Image:</h3>
           <img
             src={processedImage}
             alt="Processed result"
-            style={{ maxWidth: "100%", borderRadius: 8, border: "1px solid #ccc" }}
+            style={{ maxWidth: "100%"}}
           />
         </div>
       )}
 
-      {/* --- JSON/Table Output --- */}
+      {/* --- Table Output --- */}
       {jsonResult && (
         <div style={{ marginTop: 30 }}>
-          
+          <h3>Prediction:</h3>
           {jsonResult.predictions && jsonResult.predictions.length > 0 && (
             <table
               border="1"
               cellPadding="6"
-              style={{ borderCollapse: "collapse", width: "100%", marginTop: 10 }}
+              style={{
+                borderCollapse: "collapse",
+                width: "100%",
+                marginTop: 10,
+              }}
             >
               <thead>
-                <tr style={{ background: "#ddd" }}>
+                <tr>
                   <th>Class Name</th>
                   <th>Confidence</th>
                   <th>Bounding Box [x1, y1, x2, y2]</th>
