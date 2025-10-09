@@ -1,0 +1,23 @@
+version: '1.0'
+services:
+  mlapi:
+    image: mlapi:latest
+    build:
+      context: ./mlapi
+      dockerfile: Dockerfile
+    container_name: mlapi
+    ports:
+      - "8000:8000"
+
+  frontend:
+    image: frontend:latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "3000:3000"
+    stdin_open: true
+    tty: true
+    depends_on:
+      - mlapi

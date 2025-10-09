@@ -22,4 +22,4 @@ WORKDIR /app
 COPY --from=build /app/.venv /app/.venv
 ENV PATH /app/.venv/bin:${PATH}
 COPY . .
-CMD uvicorn src.main:app --host 0.0.0.0
+CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0"]
