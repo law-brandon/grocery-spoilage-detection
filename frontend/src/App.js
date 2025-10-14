@@ -42,13 +42,13 @@ function DefaultApp() {
       let endpointUrl = "";
       switch (selectedEndpoint) {
         case "check":
-          endpointUrl = "http://127.0.0.1:8000/freshvision/check";
+          endpointUrl = "http://freshvision-940640548.us-east-1.elb.amazonaws.com/freshvision/check";
           break;
         case "annotate-banana":
-          endpointUrl = "http://127.0.0.1:8000/freshvision/annotate-banana";
+          endpointUrl = "http://freshvision-940640548.us-east-1.elb.amazonaws.com/freshvision/annotate-banana";
           break;
         case "predict-banana":
-          endpointUrl = "http://127.0.0.1:8000/freshvision/predict-banana";
+          endpointUrl = "http://freshvision-940640548.us-east-1.elb.amazonaws.com/freshvision/predict-banana";
           break;
         default:
           return;

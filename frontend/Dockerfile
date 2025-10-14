@@ -1,13 +1,29 @@
-FROM node:20-alpine AS frontend-build
+# ---------- Build Stage ----------
+FROM node:20-alpine AS build
 
+# Set working directory
 WORKDIR /app
 
-COPY package.json .
+# Install dependencies
+COPY package*.json ./
+RUN npm install
 
-RUN npm install 
-
+# Copy source code and build
 COPY . .
+RUN npm run build
 
-EXPOSE 3000
 
-CMD ["npm", "start"]
+# ---------- Serve Stage ----------
+FROM nginx:alpine
+
+# Copy build output to nginx html directory
+COPY --from=build /app/build /usr/share/nginx/html
+
+# (Optional) Add custom Nginx config if needed
+# COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Expose port 80 for ECS/ELB
+EXPOSE 80
+
+# Run nginx in foreground (so ECS knows container is alive)
+CMD ["nginx", "-g", "daemon off;"]
