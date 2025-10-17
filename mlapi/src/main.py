@@ -18,3 +18,11 @@ app.add_middleware(
 
 # Mount the sub-application
 app.mount("/freshvision", subapi)
+
+@subapi.get("/")
+async def health_check():
+    """
+    A simple health check endpoint that returns 200 OK.
+    The Load Balancer will hit this path to check if the service is alive.
+    """
+    return {"status": "ok"}

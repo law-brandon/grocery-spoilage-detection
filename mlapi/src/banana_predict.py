@@ -1,20 +1,64 @@
 import json
 from fastapi import FastAPI, UploadFile, File
-from datetime import datetime, timezone
-from pydantic import BaseModel, field_validator, ConfigDict
+from datetime import datetime, timezone, timedelta
 from fastapi.responses import JSONResponse, StreamingResponse
 import numpy as np
-import joblib
 from ultralytics import YOLO
 from PIL import Image
 import io
 import os
+from dotenv import load_dotenv
+
+import boto3
+from botocore.exceptions import ClientError
+import uuid
+from typing import Optional, Tuple, List
+
+# Load environment variables
+load_dotenv()
 
 # Sub-application
 subapi = FastAPI()
 
 model_path = "./best.pt"
 yolo_model = YOLO(model_path)
+
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
+S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "freshvision-s3-prediction-store-test")
+
+# Configure AWS S3 Client
+s3_client = boto3.client(
+    's3',
+    aws_access_key_id=AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    region_name=AWS_REGION
+) if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY else boto3.client('s3')
+
+# Allowed image extensions
+ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+
+def validate_image_file(filename: str, content: bytes) -> tuple[bool, Optional[str]]:
+    """Validate image file extension and size."""
+    # Check extension
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        return False, f"File type not allowed. Allowed types: {', '.join(ALLOWED_EXTENSIONS)}"
+    
+    # Check size
+    if len(content) > MAX_FILE_SIZE:
+        return False, f"File size exceeds maximum allowed size of {MAX_FILE_SIZE / (1024*1024)}MB"
+    
+    return True, None
+
+def generate_s3_key(filename: str, folder: str = "uploads") -> str:
+    """Generate a unique S3 key for the file."""
+    timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+    unique_id = str(uuid.uuid4())[:8]
+    ext = os.path.splitext(filename)[1]
+    return f"{folder}/{timestamp}_{unique_id}{ext}"
 
 
 #Defines the /health endpoint 
@@ -80,6 +124,11 @@ async def predict_banana(file: UploadFile = File(...)):
 
         predictions = []
         all_predictions_dict = {} 
+        
+        # Generate timestamp and S3 keys
+        timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
+        base_name = os.path.splitext(file.filename)[0]
+        annotated_key = f"annotated/{timestamp}_{base_name}_annotated.png"
 
         if results:
           
@@ -93,6 +142,26 @@ async def predict_banana(file: UploadFile = File(...)):
                     "confidence": float(conf)
                 })
             
+            annotated_array = r.plot()
+            annotated_array = annotated_array[..., ::-1]
+            annotated_image = Image.fromarray(annotated_array)
+            img_byte_arr = io.BytesIO()
+            annotated_image.save(img_byte_arr, format='PNG')
+            img_byte_arr.seek(0)
+
+            s3_key = generate_s3_key(file.filename, "uploads")
+        
+            # Upload to S3
+            s3_client.put_object(
+                Bucket=S3_BUCKET_NAME,
+                Key=s3_key,
+                Body=img_byte_arr.getvalue(),
+                ContentType='image/jpeg',
+                Metadata={
+                    'original_filename': file.filename,
+                    'upload_timestamp': datetime.utcnow().isoformat()
+                }
+            )
 
         return {
             "filename": file.filename,
@@ -111,9 +180,7 @@ async def predict_banana(file: UploadFile = File(...)):
 async def predict_banana(file: UploadFile = File(...)):
     try:
         contents = await file.read()
-        pil_img = Image.open(io.BytesIO(contents))
-
-    
+        pil_img = Image.open(io.BytesIO(contents))    
         results = yolo_model.predict(pil_img, imgsz=640, verbose=False)
 
  
@@ -133,4 +200,73 @@ async def predict_banana(file: UploadFile = File(...)):
         return JSONResponse(
             status_code=400,
             content={"error": f"Invalid image file or model error: {str(e)}"}
+        )
+
+
+# 3. Upload Endpoint
+@subapi.post("/upload-image")
+async def upload_image_to_s3(
+    file: UploadFile = File(...),
+    folder: str = "uploads"
+):
+    """
+    Upload an image to S3 bucket.
+    
+    Args:
+        file: Image file to upload
+        folder: S3 folder/prefix (default: "uploads")
+    
+    Returns:
+        JSON with S3 URL and metadata
+    """
+    try:
+        # Read file contents
+        contents = await file.read()
+        
+        # Validate file
+        is_valid, error_msg = validate_image_file(file.filename, contents)
+        if not is_valid:
+            return JSONResponse(
+                status_code=400,
+                content={"error": error_msg}
+            )
+        
+        # Generate unique S3 key
+        s3_key = generate_s3_key(file.filename, folder)
+        
+        # Upload to S3
+        s3_client.put_object(
+            Bucket=S3_BUCKET_NAME,
+            Key=s3_key,
+            Body=contents,
+            ContentType=file.content_type or 'image/jpeg',
+            Metadata={
+                'original_filename': file.filename,
+                'upload_timestamp': datetime.utcnow().isoformat()
+            }
+        )
+        
+        # Generate S3 URL
+        s3_url = f"https://{S3_BUCKET_NAME}.s3.{AWS_REGION}.amazonaws.com/{s3_key}"
+        
+        return {
+            "success": True,
+            "filename": file.filename,
+            "s3_key": s3_key,
+            "s3_url": s3_url,
+            "size_bytes": len(contents),
+            "content_type": file.content_type
+        }
+    
+    except ClientError as e:
+        error_code = e.response['Error']['Code']
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"S3 upload failed: {error_code} - {str(e)}"}
+        )
+    
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Upload failed: {str(e)}"}
         )
