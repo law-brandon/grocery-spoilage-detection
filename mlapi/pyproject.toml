@@ -20,6 +20,7 @@ joblib = "^1.5.2"
 boto3 = "^1.40.54"
 python-dotenv = "^1.0.0"
 dotenv = "^0.9.9"
+psycopg2-binary = "^2.9.11"
 
 [[tool.poetry.source]]
 name = "pytorch"

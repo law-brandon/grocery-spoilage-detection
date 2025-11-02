@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './FreshnessDetector.css';
+import ImageGallery from './ImageGallery';
 
 const FreshnessDetector = () => {
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -8,6 +9,7 @@ const FreshnessDetector = () => {
   const [detections, setDetections] = useState([]);
   const [stats, setStats] = useState({ fresh: 0, spoiled: 0 });
   const [selectedFile, setSelectedFile] = useState(null);
+  const [viewMode, setViewMode] = useState('upload'); // 'upload' or 'gallery'
 
   const fileInputRef = useRef(null);
   const imageRef = useRef(null);
@@ -185,10 +187,27 @@ const FreshnessDetector = () => {
       <div className="header">
         <img src="/freshvision-logo.png" alt="FreshVision Logo" className="logo" />
         <p>Instantly assess produce freshness, automatically identifies spoilage on fruits and vegetables</p>
+        <div className="toggle-switch-container">
+          <div className="toggle-switch">
+            <input
+              type="checkbox"
+              id="view-toggle"
+              checked={viewMode === 'gallery'}
+              onChange={(e) => setViewMode(e.target.checked ? 'gallery' : 'upload')}
+            />
+            <label htmlFor="view-toggle">
+              <span className="toggle-label left">Upload Menu</span>
+              <span className="toggle-label right">View History</span>
+            </label>
+          </div>
+        </div>
       </div>
 
-      <div className={`main-content ${!showResults ? 'initial-state' : ''}`}>
-        <div className="card upload-section">
+      {viewMode === 'gallery' && <ImageGallery />}
+
+      {viewMode === 'upload' && (
+        <div className={`main-content ${!showResults ? 'initial-state' : ''}`}>
+          <div className="card upload-section">
           {!imageLoaded ? (
             <div 
               className="upload-area" 
@@ -284,8 +303,9 @@ const FreshnessDetector = () => {
               No produce detected in the image. Try another image!
             </div>
           )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
