@@ -273,12 +273,18 @@ async def predict_banana(file: UploadFile = File(...)):
                 
                 # Insert an entry for each prediction
                 for prediction in predictions:
-                    is_fresh = "rotten banana" not in prediction["class_name"].lower()
-                    cur.execute("""
-                        INSERT INTO entries (created_at, fruit, is_fresh)
-                        VALUES (NOW(), 'banana', %s)
-                        RETURNING id;
-                    """, (is_fresh,))
+
+                    current_class_name = prediction["class_name"].lower()
+                    is_fresh_for_this_item = current_class_name not in (
+                    "rotten banana", "rotten apple", "rotten strawberry"
+                    )
+
+                    sql_query = """
+                    INSERT INTO entries (created_at, fruit, is_fresh)
+                    VALUES (NOW(), %s, %s) 
+                    RETURNING id;
+                    """
+                    cur.execute(sql_query, (prediction["class_name"], is_fresh_for_this_item))
                 
                 conn.commit()
                 cur.close()
