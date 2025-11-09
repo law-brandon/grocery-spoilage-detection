@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './FreshnessDetector.css';
 import ImageGallery from './ImageGallery';
+import SpoilageDashboard from './SpoilageDashboard';
 
 const FreshnessDetector = () => {
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -202,6 +203,8 @@ const FreshnessDetector = () => {
           </div>
         </div>
       </div>
+
+      <SpoilageDashboard />
 
       {viewMode === 'gallery' && <ImageGallery />}
 
